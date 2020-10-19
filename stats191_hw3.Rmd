@@ -1,0 +1,381 @@
+---
+title: "STATS191 homework 3"
+author: "Zolboo Chuluunbaatar"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Question 1 (ALSM, 6.18)
+```{r}
+useful_function = function(dataname) {
+    return(paste("http://www.stanford.edu/class/stats191/data/", dataname, sep=''))
+}
+useful_function("math-salaries.table")
+
+h = read.table(useful_function("math-salaries.table"), header=TRUE, sep='')
+```
+### 1. 
+##### Below, we have the correlation matrix and the scatter plot matrix. Based on the correlation matrix,(considering 0.7 as a threshold for strong correlation) "Y and X2" are the strongest correlated coefficients. Indeed in the scatter plot, we see the tight clustering around the "diagonal Y=X2" line. In other words, knowing X2 helps predict the value of Y. On the other hand, the least uncorrelated coefficients are "X2 and X3".
+
+```{r}
+cor(h)
+
+pairs(h[,1:4], pch=23)
+```
+
+
+### 2. 
+##### Fitted regression function is  $Y = 1.10 *X1 + 0.32 *X2 + 1.29 *X3$ 
+
+```{r}
+fit <- lm(h$Y ~ h$X1 + h$X2 + h$X3, data = h)
+summary(fit)
+```
+
+
+### 3. 
+##### From the fit of the multilinear regression, $F = 68.12$
+
+##### Using Goodness of Fit test, 
+
+$H_0 : \beta_1 = \beta_2 = \beta_3 = 0$
+$H_a$ : at least one of $\beta$'s is not zero. 
+
+Reject $H_0$ at level $\alpha = 0.10$ if $$F > F_{(3, 20, 0.90)}$$
+
+```{r}
+qf(.90, df1=20, df2=3) 
+```
+
+##### Since $F = 68.12 > 5.18$, we reject the null hypothesis. 
+
+### 4. 
+
+##### $90\%$ Confidence Intervals: 
+##### $$CI_{\beta_1} = [0.53, 1.67]$$
+##### $$CI_{\beta_2}  = [0.26, 0.39]$$
+##### $$CI_{\beta_3} = [0.77, 1.80]$$
+
+```{r}
+confint(fit, level = 0.90,
+adjust.method = "bonferroni")
+
+```
+### 5. 
+##### From the summary of the fit, R-squared = $0.9109$, and Adjusted R-squared = $0.8975$.
+##### R-squared is a statistical measure of how close the data are to the fitted regression line.
+##### Since R-squared = $0.91$ is quite closer to 1, the fit is pretty good. 
+
+
+### 6. 
+```{r}
+function_s = function(dataname) {
+    return(paste("https://web.stanford.edu/class/stats191/data/", dataname, sep=''))
+}
+function_s("salary_levels.table")
+
+salaries = read.table(function_s("salary_levels.table"), header=TRUE, sep='')   
+
+salaries$L1
+
+newdat <- data.frame(X1 = 5, X2 = 6, X3 = 4)
+predict(fit, newdat, se.fit=TRUE, interval="confidence", level=0.90)
+```
+
+
+\newpage
+## Question 2 
+
+```{r}
+state.data = data.frame(state.x77)
+```
+
+```{r}
+pairs(state.data[,1:4], pch=23)
+
+state.lm <- lm(state.data$Income ~ state.data$Population + state.data$Illiteracy + state.data$HS.Grad)
+
+summary(state.lm)
+```
+
+##### 2. Based on the summary, 
+##### the most significant variable is HS.Grad (0.0001), then Population (0.015), and lastly Illiteracy has 0.61 significance. (Here the intercept is also significant.)
+
+
+##### 3. 
+```{r}
+par(mfrow = c(2, 2))
+plot(state.lm)
+```
+##### 4.
+
+```{r}
+plot(dffits(state.lm), pch=23, bg='orange', cex=2, ylab="DFFITS")
+
+state.data[which(dffits(state.lm) > 0.5),]
+```
+
+Alaska and North Dakota have the highest influence. (> 0.5)
+
+```{r}
+plot(cooks.distance(state.lm), pch=23, bg='orange', cex=2, ylab="Cook's distance")
+
+state.data[which(cooks.distance(state.lm) > 0.1),]
+```
+
+
+##### 5.  Alaska, California, New Mexico, and Utah have the highest influence. (> 0.1)
+
+```{r}
+plot(hatvalues(state.lm), pch=23, bg='orange', cex=2, ylab='Hat values')
+state.data[which(hatvalues(state.lm) > 0.3),]
+```
+
+##### 6. California has the outlying predictors. 
+
+##### 7. 
+```{r}
+library(car)
+outlierTest(state.lm)
+
+row.names(state.data)[2]
+```
+
+#####  By the built-in Outlier Test, Alaska is the outlier. 
+
+```{r}
+new.data <- state.data[-c(2), ]
+head(new.data)
+
+new.lm <- lm(new.data$Income ~ new.data$Population + new.data$Illiteracy + new.data$HS.Grad)
+summary(new.lm)
+
+```
+
+##### Fitting the model without the outlier, we get a new model and the significance of the independent variable Illiteracy changed to 0.07.
+
+```{r}
+outlierTest(new.lm)
+```
+##### The Outlier Test says there are no more outliers in the newer model.
+
+
+##### 8. 
+
+
+```{r}
+inflm <- influence.measures(state.lm)
+which(apply(inflm$is.inf, 1, any))
+
+state.data[which(apply(inflm$is.inf, 1, any)), ]
+```
+
+##### If we haven't removed the influential points, (we find all the influential states using the original fitted model), then 
+
+##### the influential states are Alaska, California, Hawaii, Louisiana, and New York. 
+
+
+
+\newpage
+
+## Question 3
+
+```{r}
+data(iris)
+```
+
+```{r}
+head(iris)
+
+iris.lm <- lm(iris$Sepal.Length ~ iris$Sepal.Width + iris$Petal.Length + iris$Petal.Width, data = iris)
+
+iris.reduced.lm <- lm(iris$Sepal.Length ~ iris$Petal.Width, data = iris)
+
+anova(iris.lm, iris.reduced.lm)
+```
+
+##### Anova test says F-stat for the reduced model is $97.88$ and the P=value is statistically significant. Therefore we do not reject the null hypothesis at significance level $\alpha = 0.05$ . 
+
+##### 3. 
+Test $$H_0 : \beta_{sepalwidth} = \beta_{petallength}$$
+
+
+```{r}
+iris.1.lm <- lm(iris$Sepal.Length ~ I( iris$Sepal.Width + iris$Petal.Length) + iris$Petal.Width, data = iris)
+
+anova(iris.lm, iris.1.lm)
+```
+
+##### Anova test says F-stat for the reduced model is $0.63$ and the P-value= $0.43$ is NOT statistically significant. Therefore we reject the null hypothesis at significance level $\alpha = 0.05$. 
+
+
+The $H_0$ Null hypothesis is equivalent to the following: 
+$$H_0 : abs(\beta_{petallengh} - \beta_{sepalwidth})+ \beta_{sepalwidth} = \beta_{petallengh} $$
+
+
+```{r} 
+
+z <- iris$Petal.Length 
+abs <- abs(z - iris$Sepal.Width)
+Z <- iris$Sepal.Width + iris$Petal.Length
+
+iris.2.lm <- lm(iris$Sepal.Length ~ Z + abs + iris$Petal.Width, data = iris)
+
+anova(iris.2.lm, iris.lm)
+sum(iris$Petal.Length - iris$Sepal.Width)
+```
+
+
+\newpage
+
+## Question 4. 
+### 1. 
+##### The model "R.lm" below includes an interaction between log(Lscd) and Cluster. These lines have the same intercept but possibly different slopes within the Cluster groups -R and -D.
+
+```{r}
+tomasetti = read.csv("https://stats191.stanford.edu/data/Tomasetti.csv")
+attach(tomasetti)
+log.risk <- log(tomasetti$Risk)
+log.lscd <- log(tomasetti$Lscd)
+cluster <- tomasetti$Cluster
+
+tomasetti.lm <- lm(log.risk ~ log.lscd, data = tomasetti)
+
+R.lm <- lm(log.risk ~ log.lscd + log.lscd:cluster , data = tomasetti)
+summary(R.lm)
+```
+
+### 2.
+
+##### The scatter plot and the two regression lines (assuming the slopes are different, and the intercepts are the same.)
+
+```{r}
+plot(log.lscd, log.risk, type='n')
+points(log.lscd[(cluster == "Replicative")], log.risk[(cluster == "Replicative")], pch=21, cex=2, bg='green')
+points(log.lscd[(cluster == "Deterministic")], log.risk[(cluster == "Deterministic")], pch=25, cex=2, bg='purple')
+
+abline(R.lm$coef['(Intercept)'], R.lm$coef['log.lscd'], lwd=3, col='purple')
+abline(R.lm$coef['(Intercept)'], R.lm$coef['log.lscd'] + R.lm$coef['log.lscd:clusterReplicative'], lwd=3, col='green')
+
+```
+
+### 3.
+##### P-value is $4.922e-06$ and is statistically significant. 
+
+```{r}
+anova(tomasetti.lm, R.lm)
+```
+
+### 4. 
+##### Since the P-value is statistically significant, the model with classification taken into account is different from the model which doesn't account for this classification. We also see that in the plot, the two regression lines look completely different from each other. Therefore, the p-value from part 3 makes sense. 
+
+
+\newpage
+## Question 5. 
+
+
+### 1.
+
+```{r}
+myFunction <- function() {
+n<- 100
+X <- matrix(rnorm(1000), nrow = n, ncol = 10)
+Y <- 1 + 0.1 * X[,1] + rnorm(n)
+
+M <- cbind(X, Y)
+colnames(M) <- c("X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "X10", "Y")
+return(data.frame(M))
+}
+```
+##### myFunction() creates a sample table with column names X1, ..., X10, and Y, and it has 100 entries. Below we show the first 3 rows of the table. 
+
+```{r}
+sampleData <- myFunction()
+head(sampleData, 3)
+```
+
+2. Fit a model lm(Y ~ X), computing the features for which the p-value is less than 10% and returning 95% confidence intervals for those selected coefficients. What number should each of these numbers cover? That is, if we form a 95% confidence interval for the effect of  X3  what should the interval cover? (Note that there are 11 coefficients so we want 11 different numbers.) How often do your intervals cover what they should? A hint for computation: write a function that returns a vector of length 11 as follows: if a feature is selected return 1 if the interval covers and 0 otherwise; if the feature is not covered set the value to be NA. Store these results as rows in a matrix and compute the mean of each column (removing NA). 
+
+```{r}
+sample.lm <- lm(Y ~ X1 + X2 + X3 + X4 + X5 + X6 + X7 + X8 + X9 + X10, data = sampleData)
+summary(sample.lm)
+
+pvalues <- summary(sample.lm)$coef[,4]
+```
+
+The which function below will return features (including intercept if it has pvalue <0.10) whose p value is less than 0.10. 
+```{r}
+which(summary(sample.lm)$coef[,4] < 0.1)
+```
+The following will return corresponding confidence intervals for those features. 
+```{r}
+
+confint(sample.lm)[which(summary(sample.lm)$coef[,4] < 0.1),]
+```
+
+\newpage
+## Question 6. (ALSM 19.14)
+
+### 1. 
+```{r}
+useful_function = function(dataname) {
+    return(paste("http://stats191.stanford.edu/data/", dataname, sep=''))
+}
+useful_function("hayfever.table")
+
+hf.data = read.table(useful_function("hayfever.table"), header=TRUE, sep='')   
+
+hf.data$A.factor <- factor(hf.data$A)
+hf.data$B.factor <- factor(hf.data$B)
+hf.lm <- lm(hours ~ A.factor + B.factor + A.factor:B.factor, data = hf.data)
+summary(hf.lm)
+
+```
+
+##### Below, the estimated mean value of hours is $5.375$ when factor A is 2 and factor B is 1. 
+
+```{r}
+predict(hf.lm, list(A.factor=factor(2),B.factor=factor(1)))
+```
+
+### 2. 
+##### In the qq-plot, we see some outliers that are away from the qqline. Therefore, it violates the normality of the qqline.
+```{r}
+hf.stdres <- rstandard(hf.lm)
+qqnorm(hf.stdres,ylab="Standardized Residuals", xlab="Normal Scores", main="QQ Plot")
+qqline(hf.stdres)
+```
+
+##### Moreover, Shapiro-Wilk test of normality implies that the p-value is statistically significant, so the distribution is significantly different from normal distribution. In other words, we cannot assume the normality. 
+
+```{r}
+shapiro.test(hf.stdres)
+```
+
+#### 3.
+##### Below we plot the interaction plot. Since these broken lines are not parallel, there is evidence of an interaction.
+```{r}
+interaction.plot(hf.data$A.factor, hf.data$B.factor, hf.data$hours, type='b', col=c('red',
+                  'blue', 'yellow'), lwd=2, pch=c(23,24))
+
+```
+
+
+
+#### 4.
+##### Based on anova(hf.lm) result below, we see that the Interaction of Factors A and B is statistically significant. So we can REJECT the null hypothesis that there is an interaction between Factors A and B.
+```{r}
+hf1.lm <- lm(hours ~ A.factor + B.factor, data = hf.data)
+anova(hf1.lm, hf.lm)
+``` 
+
+```{r}
+anova(hf.lm)
+```
+#### 5. 
+
+##### We can see that Main Effects of Factors A and B are all statistically significant at level 0.05. We can REJECT the null hypothesis that there are main effects of Factor A and Factor B. 
